@@ -2,9 +2,13 @@
 
 > Helping you with smaller tasks while Copilot handles the big stuff.
 
-Steward is a `bun`-based command-line tool that provides a harness for running large language models (LLMs) with a predefined set of tools. It is inspired by GitHub Copilot and aims to be an informal test suite for small LLMs to evaluate their ability to perform coding tasks using tools like file reading, searching, executing commands, applying patches, managing todo lists, and fetching web content.
+Steward is a `bun`-based command-line tool that provides a harness for running large language models (LLMs) with a predefined set of tools.
+
+It is inspired by GitHub Copilot and aims to be an informal test suite for small LLMs (which I have been shoehorning into ARM devices for years now) to evaluate their ability to perform basic scripting tasks using tools like file reading, searching, executing commands, applying patches, managing todo lists, and fetching web content.
 
 It is designed to be run against OpenAI-compatible models, but is developed using Azure OpenAI endpoints and also includes an "echo" provider for testing purposes.
+
+It is also, scarily, already able to reproduce itself (`make inception`).
 
 ## Quick start
 
@@ -39,10 +43,11 @@ It is designed to be run against OpenAI-compatible models, but is developed usin
 
 - `--provider <echo|openai|azure>`: choose the LLM backend (default: echo).
 - `--model <name>`: model identifier for the provider (default: GPT-4o-mini).
-- `--max-steps <n>`: limit the number of tool/LLM turns (default: 8).
+- `--max-steps <n>`: limit the number of tool/LLM turns (default: 16).
 - `--log-json <file>`: write JSONL logs (default: .steward-log.jsonl or STEWARD_LOG_JSON).
 - `--no-log-json`: disable JSONL logging.
 - `--quiet`: suppress human-readable logs to stdout.
+- `--pretty`: render human-readable logs with colored boxes.
 - `--system <file>`: load a custom system prompt from a file.
 
 Pre-baked Copilot-style system prompt: prompts/copilot-system.txt.
@@ -66,6 +71,7 @@ Starter user prompts: see [prompts/starters](prompts/starters.md).
 - **workspace_summary**: lightweight summary of package.json (if any) and top-level dirs/files (ignores .git/node_modules).
 
 LLM providers:
+
 - OpenAI-compatible: `--provider openai` with `STEWARD_OPENAI_API_KEY` (or `OPENAI_API_KEY`) and optional `STEWARD_OPENAI_BASE_URL` for compatible hosts.
 - Azure OpenAI: `--provider azure` with `STEWARD_AZURE_OPENAI_ENDPOINT`, `STEWARD_AZURE_OPENAI_KEY`, `STEWARD_AZURE_OPENAI_DEPLOYMENT`, optional `STEWARD_AZURE_OPENAI_API_VERSION` (default 2024-10-01-preview).
 
@@ -78,16 +84,23 @@ Notes:
 ## Examples (Copilot-style flows)
 
 - Read + search + patch a file:
-   ```bash
-   bun run src/cli.ts "Inspect src/tools.ts and add a short comment above grep_search explaining context options. Use read_file, then grep_search, then apply_patch." --provider echo
-   ```
+
+  ```bash
+  bun run src/cli.ts "Inspect src/tools.ts and add a short comment above grep_search explaining context options. Use read_file, then grep_search, then apply_patch." --provider echo
+  ```
 
 - Find an error location with search context and headings:
-   ```bash
-   bun run src/cli.ts "Search for 'TODO' in src with headings, then read the file sections to summarize outstanding work." --provider echo
-   ```
+
+  ```bash
+  bun run src/cli.ts "Search for 'TODO' in src with headings, then read the file sections to summarize outstanding work." --provider echo
+  ```
 
 - Run tests with execute (requires STEWARD_ALLOW_EXECUTE=1):
-   ```bash
-   STEWARD_ALLOW_EXECUTE=1 bun run src/cli.ts "Run bun test with dots reporter from the repo root and report the summary." --provider echo
-   ```
+  ```bash
+  STEWARD_ALLOW_EXECUTE=1 bun run src/cli.ts "Run bun test with dots reporter from the repo root and report the summary." --provider echo
+  ```
+
+## Roadmap
+
+- [ ] Add basic MCP support (testing against [`umcp`](https://github.com/rcarmo/umcp))
+- [ ] Add Anthropic-like skills

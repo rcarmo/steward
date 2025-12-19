@@ -12,6 +12,9 @@
     "check": "bun test"
   },
   "dependencies": {
+    "boxen": "^8.0.1",
+    "chalk": "^5.6.2",
+    "cli-truncate": "^5.1.1",
     "diff": "^8.0.2",
     "minimatch": "^10.1.1",
     "openai": "^6.15.0"
