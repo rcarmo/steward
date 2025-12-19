@@ -2,6 +2,7 @@
 node_modules/
 build/
 dist/
-.harness-todo.json
+.steward-todo.json
+.steward-exec-audit.log
 .DS_Store
 .vscode/

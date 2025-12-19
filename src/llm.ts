@@ -13,11 +13,11 @@ export class OpenAIClient implements LLMClient {
   private client: OpenAI;
   private model: string;
 
-  constructor(model: string, apiKey?: string) {
+  constructor(model: string, apiKey: string, baseURL?: string, defaultQuery?: Record<string, string>) {
     if (!apiKey) {
-      throw new Error("OPENAI_API_KEY is required for the OpenAI provider");
+      throw new Error("STEWARD_OPENAI_API_KEY (or Azure key) is required for this provider");
     }
-    this.client = new OpenAI({ apiKey });
+    this.client = new OpenAI({ apiKey, baseURL, defaultQuery });
     this.model = model;
   }
 
@@ -52,7 +52,20 @@ export class OpenAIClient implements LLMClient {
 
 export function buildClient(provider: string, model: string): LLMClient {
   if (provider === "openai") {
-    return new OpenAIClient(model, process.env.OPENAI_API_KEY);
+    const apiKey = process.env.STEWARD_OPENAI_API_KEY ?? process.env.OPENAI_API_KEY;
+    const baseURL = process.env.STEWARD_OPENAI_BASE_URL ?? process.env.OPENAI_BASE_URL;
+    return new OpenAIClient(model, apiKey ?? "", baseURL);
+  }
+  if (provider === "azure") {
+    const endpoint = process.env.STEWARD_AZURE_OPENAI_ENDPOINT ?? process.env.AZURE_OPENAI_ENDPOINT;
+    const apiKey = process.env.STEWARD_AZURE_OPENAI_KEY ?? process.env.AZURE_OPENAI_KEY;
+    const deployment = process.env.STEWARD_AZURE_OPENAI_DEPLOYMENT ?? process.env.AZURE_OPENAI_DEPLOYMENT;
+    const apiVersion = process.env.STEWARD_AZURE_OPENAI_API_VERSION ?? process.env.AZURE_OPENAI_API_VERSION ?? "2024-10-01-preview";
+    if (!endpoint || !apiKey || !deployment) {
+      throw new Error("Azure provider requires endpoint, key, and deployment (STEWARD_AZURE_OPENAI_ENDPOINT/KEY/DEPLOYMENT)");
+    }
+    const baseURL = `${endpoint.replace(/\/$/, "")}/openai/deployments/${deployment}`;
+    return new OpenAIClient(model, apiKey, baseURL, { "api-version": apiVersion });
   }
   return new EchoClient();
 }
