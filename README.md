@@ -63,6 +63,7 @@ Starter user prompts: see [prompts/starters](prompts/starters.md).
 - **create_file**: create or overwrite a file with content.
 - **list_dir**: list directory entries (skips node_modules/.git unless includeIgnored is true).
 - **execute**: run a shell command with optional cwd/env/timeout/background/stream/maxOutputBytes using Bun's process API (requires `STEWARD_ALLOW_EXECUTE=1`). Respects allow/deny lists via `STEWARD_EXEC_ALLOW` / `STEWARD_EXEC_DENY` (comma-separated), optional default timeout via `STEWARD_EXEC_TIMEOUT_MS`, default output cap via `STEWARD_EXEC_MAX_OUTPUT_BYTES`, and audit logging to `.steward-exec-audit.log` (disable with `STEWARD_EXEC_AUDIT=0`).
+- **run_js**: sandboxed JavaScript execution inside QuickJS (no workspace access) with optional `timeoutMs` and `maxOutputBytes`; defaults via `STEWARD_JS_TIMEOUT_MS` and `STEWARD_JS_MAX_OUTPUT_BYTES`.
 - **apply_patch**: apply a unified diff patch to a file; supports `dryRun` and `patches` batches (all-or-nothing validation before write).
 - **manage_todo**: add/list/complete tasks stored in `.steward-todo.json`; supports statuses (not-started, in-progress, blocked, done) and `set_status`.
 - **web_fetch**: fetch a URL (response truncated), optional textOnly strip with content-type note; default size cap via `STEWARD_WEB_MAX_BYTES`.

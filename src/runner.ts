@@ -4,7 +4,7 @@ import boxen from "boxen";
 import chalk from "chalk";
 import cliTruncate from "cli-truncate";
 import { buildClient } from "./llm.ts";
-import { toolDefinitions, toolHandlers } from "./tools.ts";
+import { toolDefinitions, toolHandlers } from "./tools/index.ts";
 import type { Message } from "./types.ts";
 
 export type RunnerOptions = {

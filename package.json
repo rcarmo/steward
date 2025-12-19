@@ -17,7 +17,8 @@
     "cli-truncate": "^5.1.1",
     "diff": "^8.0.2",
     "minimatch": "^10.1.1",
-    "openai": "^6.15.0"
+    "openai": "^6.15.0",
+    "quickjs-emscripten": "^0.31.0"
   },
   "devDependencies": {
     "@types/diff": "^8.0.0",
