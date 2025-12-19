@@ -36,7 +36,7 @@ export async function runSteward(options: RunnerOptions) {
   messages.push({ role: "system", content: system });
   messages.push({ role: "user", content: options.prompt });
 
-  const limit = options.maxSteps ?? 16;
+  const limit = options.maxSteps ?? 32;
   const retryLimit = options.retries ?? 0;
   const requestTimeoutMs = options.requestTimeoutMs;
   for (let step = 0; step < limit; step++) {
