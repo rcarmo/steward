@@ -67,6 +67,9 @@ export async function runSteward(options: RunnerOptions) {
     });
 
     if (response.toolCalls?.length) {
+      if (response.content) {
+        logger.human({ title: "model", body: response.content });
+      }
       logger.human({ title: "model", body: `step ${step} → tool calls: ${response.toolCalls.map((c) => c.name).join(", ")}` });
       messages.push({ role: "assistant", content: response.content, tool_calls: response.toolCalls });
       for (const call of response.toolCalls) {
@@ -167,10 +170,11 @@ async function withTimeout<T>(fn: () => Promise<T>, timeoutMs?: number): Promise
 function defaultSystemPrompt() {
   return [
     "You are GitHub Copilot running in a local CLI steward.",
-    "Tools: read_file, grep_search, create_file, list_dir, execute, apply_patch, manage_todo, web_fetch, git_status, git_diff, workspace_summary.",
+    "Tools: read_file, grep_search, create_file, list_dir, execute, apply_patch, manage_todo, web_fetch, git_status, git_diff, git_commit, git_stash, workspace_summary.",
     "Stay within the current workspace; do not invent files or paths.",
+    "Briefly state your intent before calling tools; narrate what you are doing and why.",
     "Use tools to gather context before editing. Keep replies short and task-focused.",
-    "When finished, provide a brief result and, if relevant, next steps.",
+    "After tools finish, give a concise result and, if helpful, next steps.",
   ].join("\n");
 }
 

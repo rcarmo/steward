@@ -57,20 +57,25 @@ Starter user prompts: see [prompts/starters](prompts/starters.md).
 
 ## Tools (Copilot-aligned names)
 
-- **read_file**: read a file (optional line range), supports maxLines/maxBytes with truncation note; defaults can be set via `STEWARD_READ_MAX_LINES` / `STEWARD_READ_MAX_BYTES`.
-- **grep_search**: search for a pattern in workspace files (recursive scan, capped results, include/exclude filters, includeGlob/excludeGlob); supports contextLines or asymmetric before/after context, caseSensitive/smartCase, fixedString, wordMatch, includeHidden/includeBinary, optional context labels/separators, and maxFileBytes guard; default cap via `STEWARD_SEARCH_MAX_RESULTS` and default file cap via `STEWARD_SEARCH_MAX_FILE_BYTES`.
+- **read_file**: read a file (optional line range), supports maxLines/maxBytes with truncation note; defaults via `STEWARD_READ_MAX_LINES` / `STEWARD_READ_MAX_BYTES`.
+- **grep_search**: search in workspace files (recursive, capped results, include/exclude filters, includeGlob/excludeGlob); supports contextLines or asymmetric before/after context, caseSensitive/smartCase, fixedString, wordMatch, includeHidden/includeBinary, optional context labels/separators, and maxFileBytes guard; default caps via `STEWARD_SEARCH_MAX_RESULTS` and `STEWARD_SEARCH_MAX_FILE_BYTES`.
 - Extras: per-file headings and match counts via `withHeadings` / `withCounts`; context separators via `withContextSeparators`.
 - **create_file**: create or overwrite a file with content.
 - **list_dir**: list directory entries (skips node_modules/.git unless includeIgnored is true).
 - **execute**: run a shell command with optional cwd/env/timeout/background/stream/maxOutputBytes using Bun's process API (requires `STEWARD_ALLOW_EXECUTE=1`). Respects allow/deny lists via `STEWARD_EXEC_ALLOW` / `STEWARD_EXEC_DENY` (comma-separated), optional default timeout via `STEWARD_EXEC_TIMEOUT_MS`, default output cap via `STEWARD_EXEC_MAX_OUTPUT_BYTES`, and audit logging to `.steward-exec-audit.log` (disable with `STEWARD_EXEC_AUDIT=0`).
-- **apply_patch**: apply a unified diff patch to a file; supports `dryRun` to validate without writing; also accepts `patches` array for multi-file batches (all-or-nothing validation before write).
+- **apply_patch**: apply a unified diff patch to a file; supports `dryRun` and `patches` batches (all-or-nothing validation before write).
 - **manage_todo**: add/list/complete tasks stored in `.steward-todo.json`; supports statuses (not-started, in-progress, blocked, done) and `set_status`.
-- **web_fetch**: fetch a URL (response truncated to protect output size), optional textOnly strip with content-type note; default size cap via `STEWARD_WEB_MAX_BYTES`.
+- **web_fetch**: fetch a URL (response truncated), optional textOnly strip with content-type note; default size cap via `STEWARD_WEB_MAX_BYTES`.
 - **git_status**: short git status (with branch) for the workspace or a subpath.
 - **git_diff**: git diff (optionally staged/ref/path) with output truncation.
 - **git_commit**: commit staged changes (optionally with --all) in the workspace or a subpath.
 - **git_stash**: manage git stash (save/pop/list) for the workspace or a subpath.
 - **workspace_summary**: lightweight summary of package.json (if any) and top-level dirs/files (ignores .git/node_modules).
+
+### Default system prompt
+
+- Declares the full tool set above (including git_commit/git_stash) to mirror Copilot tool calls.
+- Instructs the model to briefly state intent before tool calls, narrate actions, and give a concise result plus next steps after tools finish.
 
 LLM providers:
 
