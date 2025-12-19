@@ -1,0 +1,7 @@
+.env
+node_modules/
+build/
+dist/
+.harness-todo.json
+.DS_Store
+.vscode/

@@ -1,0 +1,24 @@
+{
+  "name": "harness",
+  "version": "0.1.0",
+  "description": "Bun-based CLI harness for LLM tool runs",
+  "type": "module",
+  "bin": {
+    "harness": "./src/cli.ts"
+  },
+  "scripts": {
+    "start": "bun run src/cli.ts",
+    "lint": "bun lint",
+    "check": "bun test"
+  },
+  "dependencies": {
+    "diff": "^5.2.0",
+    "minimatch": "^9.0.5",
+    "openai": "^4.73.0"
+  },
+  "devDependencies": {
+    "@types/diff": "^5.0.9",
+    "@types/node": "^22.8.1",
+    "bun-types": "^1.1.34"
+  }
+}
