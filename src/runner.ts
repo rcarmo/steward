@@ -1,6 +1,5 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import boxen from "boxen";
 import chalk from "chalk";
 import cliTruncate from "cli-truncate";
 import { buildClient } from "./llm.ts";
@@ -29,7 +28,7 @@ export async function runSteward(options: RunnerOptions) {
     logJsonPath: options.logJsonPath,
     enableHumanLogs: options.enableHumanLogs !== false,
     enableFileLogs: options.enableFileLogs !== false,
-    pretty: options.prettyLogs === true,
+    pretty: options.prettyLogs !== false,
   });
   const messages: Message[] = [];
 
@@ -67,9 +66,13 @@ export async function runSteward(options: RunnerOptions) {
     });
 
     if (response.toolCalls?.length) {
-      const thought = response.content ?? formatToolCalls(response.toolCalls);
-      logger.human({ title: "model", body: thought });
-      logger.human({ title: "model", body: `step ${step} → tool calls: ${response.toolCalls.map((c) => c.name).join(", ")}` });
+      const content = response.content?.trim();
+      const shouldHideContent = content === "model" || (content && /args=/i.test(content));
+      const thought = shouldHideContent ? formatToolCalls(response.toolCalls) : (content ?? formatToolCalls(response.toolCalls));
+      if (thought) {
+        logger.human({ title: "model", body: thought, variant: "model" });
+      }
+      logger.human({ title: "model", body: `step ${step} → tool calls: ${response.toolCalls.map((c) => c.name).join(", ")}`, variant: "model" });
       messages.push({ role: "assistant", content: response.content, tool_calls: response.toolCalls });
       for (const call of response.toolCalls) {
         const todoVariant = call.name === "manage_todo" ? "todo" : undefined;
@@ -78,10 +81,12 @@ export async function runSteward(options: RunnerOptions) {
           messages.push({ role: "tool", content: `Unknown tool ${call.name}`, tool_call_id: call.id });
           continue;
         }
-        logger.human({ title: call.name, body: `args=${safeJson(call.arguments)}`, variant: todoVariant });
+        const todoSummary = summarizeTodoArgs(call);
+        const argBody = todoSummary ?? `args=${safeJson(call.arguments)}`;
+        logger.human({ title: call.name, body: argBody, variant: todoVariant ?? "tool" });
         try {
           const result = await handler(call.arguments);
-          logger.human({ title: call.name, body: result.output, variant: todoVariant });
+          logger.human({ title: call.name, body: result.output, variant: todoVariant ?? "tool" });
           await logger.json({
             type: "tool_result",
             step,
@@ -108,12 +113,22 @@ export async function runSteward(options: RunnerOptions) {
     }
 
     if (response.content) {
-      logger.human({ title: "model", body: response.content });
+      logger.human({ title: "model", body: response.content, variant: "model" });
       return;
     }
   }
 
   console.warn("Reached max steps without final response");
+}
+
+function summarizeTodoArgs(call: { name: string; arguments: Record<string, unknown> }) {
+  if (call.name !== "manage_todo") return null;
+  const action = typeof call.arguments.action === "string" ? call.arguments.action : undefined;
+  const title = typeof call.arguments.title === "string" ? call.arguments.title : undefined;
+  const id = typeof call.arguments.id === "number" ? call.arguments.id : undefined;
+  const status = typeof call.arguments.status === "string" ? call.arguments.status : undefined;
+  const parts = [action && `action=${action}`, id !== undefined && `id=${id}`, status && `status=${status}`, title && `title=${title}`].filter(Boolean);
+  return parts.length ? parts.join(" ") : null;
 }
 
 async function callModelWithPolicies(args: {
@@ -132,7 +147,7 @@ async function callModelWithPolicies(args: {
       try {
         const result = await withTimeout(() => args.client.generate(args.messages, toolDefinitions), args.requestTimeoutMs);
         if (attempt > 1) {
-          args.logger.human({ title: "model", body: `step ${args.step} retry ${attempt} succeeded` });
+          args.logger.human({ title: "model", body: `step ${args.step} retry ${attempt} succeeded`, variant: "model" });
           await args.logger.json({ type: "model_retry_success", step: args.step, attempt });
         }
         return result;
@@ -190,32 +205,40 @@ function createLogger(options: {
   const logPath = options.enableFileLogs === false
     ? null
     : path.join(process.cwd(), options.logJsonPath ?? process.env.STEWARD_LOG_JSON ?? ".steward-log.jsonl");
-  const colorForVariant = (variant: HumanEntry["variant"]) => {
-    if (variant === "error") return chalk.red;
-    if (variant === "warn") return chalk.yellow;
-    if (variant === "todo") return chalk.magenta;
-    return chalk.cyan;
+  const variantTheme = (entry: HumanEntry) => {
+    const variant = entry.variant ?? "info";
+    if (variant === "error") return { color: chalk.red, border: "red", prefix: "[error]" };
+    if (variant === "warn") return { color: chalk.yellow, border: "yellow", prefix: "[warn]" };
+    if (variant === "todo") return { color: chalk.magenta, border: "magenta", prefix: "[todo]" };
+    if (variant === "model") return { color: chalk.cyan, border: "cyan", prefix: "[model]" };
+    if (variant === "tool") return { color: chalk.green, border: "green", prefix: "[tool]" };
+    return { color: chalk.cyan, border: "cyan", prefix: "[info]" };
   };
-  const prefixForVariant = (variant: HumanEntry["variant"]) => {
-    if (variant === "error") return "[error]";
-    if (variant === "warn") return "[warn]";
-    if (variant === "todo") return "[todo]";
-    return "[info]";
+  const formatPrefix = (entry: HumanEntry) => {
+    const theme = variantTheme(entry);
+    const tag = entry.variant === "tool" && entry.title ? `${theme.prefix} ${entry.title}`
+      : entry.variant === "model" && entry.title ? `${theme.prefix} ${entry.title}`
+      : entry.title ? `${theme.prefix} ${entry.title}`
+      : theme.prefix;
+    return { theme, tag: theme.color.bold(tag) };
   };
 
   const spinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
   let spinnerTimer: ReturnType<typeof setInterval> | undefined;
   let spinnerFrame = 0;
+  const clearSpinnerLine = () => {
+    process.stdout.write("\r\x1b[2K\r");
+  };
   const stopSpinner = () => {
     if (!spinnerTimer) return;
     clearInterval(spinnerTimer);
     spinnerTimer = undefined;
     spinnerFrame = 0;
-    process.stdout.write("\r \r\n");
+    clearSpinnerLine();
   };
   const startSpinner = () => {
     if (options.enableHumanLogs === false || options.pretty !== true) return () => {};
-    if (spinnerTimer) return stopSpinner;
+    stopSpinner();
     spinnerTimer = setInterval(() => {
       const frame = spinnerFrames[spinnerFrame % spinnerFrames.length];
       spinnerFrame++;
@@ -226,27 +249,20 @@ function createLogger(options: {
   };
   const human = options.enableHumanLogs === false
     ? (_entry: HumanEntry) => {}
-    : options.pretty
-      ? (entry: HumanEntry) => {
-          const width = Math.max(40, Math.min(process.stdout.columns ?? 80, 120));
-          const title = entry.title ?? "steward";
-          const color = colorForVariant(entry.variant);
-          const body = cliTruncate(entry.body ?? "", width - 4);
-          const box = boxen(color.bold(title) + "\n" + body, {
-            padding: 1,
-            margin: 0,
-            borderStyle: "round",
-            borderColor: entry.variant === "error" ? "red" : entry.variant === "warn" ? "yellow" : entry.variant === "todo" ? "magenta" : "cyan",
-            align: "left",
-            title: undefined,
-          });
-          console.log(box);
+    : (entry: HumanEntry) => {
+        const width = Math.max(40, Math.min(process.stdout.columns ?? 80, 140));
+        const { tag, theme } = formatPrefix(entry);
+        const rawBody = entry.body ?? "";
+        if (entry.variant === "model") {
+          // Always show full model thinking; no truncation.
+          const colored = options.pretty ? theme.color(rawBody) : rawBody;
+          console.log(`${tag}\n${colored}`);
+          return;
         }
-      : (entry: HumanEntry) => {
-          const prefix = prefixForVariant(entry.variant);
-          const title = entry.title ? `${entry.title}: ` : "";
-          console.log(`${prefix} ${title}${entry.body ?? ""}`);
-        };
+        const body = cliTruncate(rawBody, width - 4);
+        const line = options.pretty ? `${tag} ${theme.color(body)}` : `${tag} ${body}`;
+        console.log(line);
+      };
   const json = async (entry: Record<string, unknown>) => {
     if (!logPath) return;
     const payload = {
@@ -273,14 +289,11 @@ function safeJson(value: unknown): string {
 }
 
 function formatToolCalls(calls: { name: string; arguments: Record<string, unknown> }[]): string {
-  const parts = calls.map((c) => `${c.name} args=${safeJson(c.arguments)}`);
-  const combined = parts.join("; ");
-  const max = 320;
-  return combined.length > max ? `${combined.slice(0, max)}…` : combined;
+  return calls.map((c) => c.name).join(", ");
 }
 
 type HumanEntry = {
   title?: string;
   body?: string;
-  variant?: "info" | "warn" | "error" | "todo";
+  variant?: "info" | "warn" | "error" | "todo" | "model" | "tool";
 };
