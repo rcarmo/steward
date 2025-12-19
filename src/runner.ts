@@ -67,9 +67,8 @@ export async function runSteward(options: RunnerOptions) {
     });
 
     if (response.toolCalls?.length) {
-      if (response.content) {
-        logger.human({ title: "model", body: response.content });
-      }
+      const thought = response.content ?? formatToolCalls(response.toolCalls);
+      logger.human({ title: "model", body: thought });
       logger.human({ title: "model", body: `step ${step} → tool calls: ${response.toolCalls.map((c) => c.name).join(", ")}` });
       messages.push({ role: "assistant", content: response.content, tool_calls: response.toolCalls });
       for (const call of response.toolCalls) {
@@ -168,11 +167,13 @@ async function withTimeout<T>(fn: () => Promise<T>, timeoutMs?: number): Promise
 }
 
 function defaultSystemPrompt() {
+  const toolList = toolDefinitions.map((t) => t.name).join(", ");
   return [
-    "You are GitHub Copilot running in a local CLI steward.",
-    "Tools: read_file, grep_search, create_file, list_dir, execute, apply_patch, manage_todo, web_fetch, git_status, git_diff, git_commit, git_stash, workspace_summary.",
+    "You are GitHub Copilot running in a local CLI environment.",
+    `Tools: ${toolList}.`,
     "Stay within the current workspace; do not invent files or paths.",
     "Briefly state your intent before calling tools; narrate what you are doing and why.",
+    "When multiple actions are needed, plan them as todos via manage_todo, then execute and update their status; show the final todo state when done.",
     "Use tools to gather context before editing. Keep replies short and task-focused.",
     "After tools finish, give a concise result and, if helpful, next steps.",
   ].join("\n");
@@ -269,6 +270,13 @@ function safeJson(value: unknown): string {
   } catch {
     return "<unserializable>";
   }
+}
+
+function formatToolCalls(calls: { name: string; arguments: Record<string, unknown> }[]): string {
+  const parts = calls.map((c) => `${c.name} args=${safeJson(c.arguments)}`);
+  const combined = parts.join("; ");
+  const max = 320;
+  return combined.length > max ? `${combined.slice(0, max)}…` : combined;
 }
 
 type HumanEntry = {

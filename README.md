@@ -76,6 +76,7 @@ Starter user prompts: see [prompts/starters](prompts/starters.md).
 
 - Declares the full tool set above (including git_commit/git_stash) to mirror Copilot tool calls.
 - Instructs the model to briefly state intent before tool calls, narrate actions, and give a concise result plus next steps after tools finish.
+- Encourages planning multi-step work as todos via manage_todo, then executing and updating status, and showing the final todo state.
 
 LLM providers:
 
