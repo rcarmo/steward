@@ -8,7 +8,7 @@ It is inspired by GitHub Copilot and aims to be an informal test suite for small
 
 It is designed to be run against OpenAI-compatible models, but is developed using Azure OpenAI endpoints and also includes an "echo" provider for testing purposes.
 
-It is also, scarily, already able to reproduce itself (`make inception`):
+It is also, scarily, already able to reproduce itself in around 30 steps (`make inception`):
 
 ![Steward inception](docs/steward-inception.png)
 
