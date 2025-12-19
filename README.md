@@ -110,5 +110,6 @@ Notes:
 
 ## Roadmap
 
+- [ ] Better logging. They're pretty, but not very readable (more tools should have different colors, thinking output should be fully visible, etc.)
 - [ ] Add basic MCP support (testing against [`umcp`](https://github.com/rcarmo/umcp))
 - [ ] Add Anthropic-like skills
