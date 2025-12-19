@@ -6,3 +6,4 @@ dist/
 .steward-exec-audit.log
 .DS_Store
 .vscode/
+outside.txt
